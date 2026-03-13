@@ -17,13 +17,14 @@ WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_NOACTIVATE = 0x08000000
 
 
-def force_topmost(hwnd):
+def keep_topmost():
     user32.SetWindowPos(
         hwnd,
         HWND_TOPMOST,
         0, 0, 0, 0,
         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
     )
+    root.after(1000, keep_topmost)
 
 
 def set_extended_style(hwnd):
@@ -53,25 +54,19 @@ def show_message():
     root.after(5000, hide_message)
 
 
+# メッセージ非表示
 def hide_message():
 
     label.pack_forget()
 
     root.update_idletasks()
 
-    # ボタンサイズまで縮小
     w = btn_frame.winfo_reqwidth() + 6
     h = btn_frame.winfo_reqheight() + 6
 
     root.geometry(f"{w}x{h}+0+0")
 
     root.after(60000, show_message)
-
-
-# topmost維持
-def keep_topmost():
-    force_topmost(hwnd)
-    root.after(1000, keep_topmost)
 
 
 def signal_handler(sig, frame):
@@ -87,11 +82,12 @@ root = tk.Tk()
 
 root.overrideredirect(True)
 root.attributes("-alpha", 0.85)
+root.attributes("-topmost", True)
 
 frame = tk.Frame(root, bg="white")
 frame.pack(fill="both", expand=True)
 
-# ボタン
+# ボタンフレーム
 btn_frame = tk.Frame(frame, bg="white")
 btn_frame.pack(anchor="nw")
 
@@ -126,9 +122,8 @@ root.update_idletasks()
 hwnd = root.winfo_id()
 
 set_extended_style(hwnd)
-force_topmost(hwnd)
 
-# 最初はボタンのみ
+# 初期状態：ボタンのみ
 label.pack_forget()
 
 root.update_idletasks()
@@ -140,6 +135,7 @@ root.geometry(f"{w}x{h}+0+0")
 # 1分後表示
 root.after(60000, show_message)
 
+# 最前面維持
 keep_topmost()
 
 root.mainloop()
