@@ -6,13 +6,18 @@ import signal
 
 # Windows API
 user32 = ctypes.windll.user32
+
 SWP_NOSIZE = 0x0001
 SWP_NOMOVE = 0x0002
 SWP_NOACTIVATE = 0x0010
 HWND_TOPMOST = -1
 
+GWL_EXSTYLE = -20
+WS_EX_TOOLWINDOW = 0x00000080
+WS_EX_NOACTIVATE = 0x08000000
 
-def set_no_activate(hwnd):
+
+def force_topmost(hwnd):
     user32.SetWindowPos(
         hwnd,
         HWND_TOPMOST,
@@ -21,29 +26,54 @@ def set_no_activate(hwnd):
     )
 
 
-# アプリ再起動
+def set_extended_style(hwnd):
+    style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+    style = style | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
+    user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
+
+
+# 再起動
 def restart_app():
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
 
-# アプリ終了
+# 終了
 def close_app():
     root.destroy()
 
 
-# 表示処理
-def show_window():
-    root.deiconify()
-    root.after(5000, hide_window)  # 5秒後に消す
+# メッセージ表示
+def show_message():
+
+    root.geometry("220x90+0+0")
+
+    label.pack(expand=True)
+
+    root.after(5000, hide_message)
 
 
-def hide_window():
-    root.withdraw()
-    root.after(60000, show_window)  # 1分後に表示
+def hide_message():
+
+    label.pack_forget()
+
+    root.update_idletasks()
+
+    # ボタンサイズまで縮小
+    w = btn_frame.winfo_reqwidth() + 6
+    h = btn_frame.winfo_reqheight() + 6
+
+    root.geometry(f"{w}x{h}+0+0")
+
+    root.after(60000, show_message)
 
 
-# Ctrl+C対応
+# topmost維持
+def keep_topmost():
+    force_topmost(hwnd)
+    root.after(1000, keep_topmost)
+
+
 def signal_handler(sig, frame):
     root.destroy()
     sys.exit(0)
@@ -55,10 +85,8 @@ signal.signal(signal.SIGINT, signal_handler)
 
 root = tk.Tk()
 
-root.geometry("220x90+0+0")
-root.attributes("-topmost", True)
-root.attributes("-alpha", 0.7)
 root.overrideredirect(True)
+root.attributes("-alpha", 0.85)
 
 frame = tk.Frame(root, bg="white")
 frame.pack(fill="both", expand=True)
@@ -85,24 +113,33 @@ stop_btn = tk.Button(
 )
 stop_btn.pack(side="left", padx=2)
 
-# テキスト
+# メッセージ
 label = tk.Label(
     frame,
     text="ジャングラーは？",
     font=("MS Gothic", 12),
     bg="white"
 )
-label.pack(expand=True)
 
-# フォーカス奪わない設定
 root.update_idletasks()
+
 hwnd = root.winfo_id()
-set_no_activate(hwnd)
 
-# 最初は非表示
-root.withdraw()
+set_extended_style(hwnd)
+force_topmost(hwnd)
 
-# 1分後に最初の表示
-root.after(60000, show_window)
+# 最初はボタンのみ
+label.pack_forget()
+
+root.update_idletasks()
+
+w = btn_frame.winfo_reqwidth() + 6
+h = btn_frame.winfo_reqheight() + 6
+root.geometry(f"{w}x{h}+0+0")
+
+# 1分後表示
+root.after(60000, show_message)
+
+keep_topmost()
 
 root.mainloop()
